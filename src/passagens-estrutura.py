@@ -69,3 +69,18 @@ def get_solids(elements):
 wall_solids = get_solids(IN[0])
 pipe_solids = get_solids(IN[1])
 OUT = pipe_solids, wall_solids 
+
+
+
+# Move pipe solids to the hostdocument's coordinate system
+pipe_solids = IN[0][0]    
+wall_solids = IN[0][1]     
+
+link = UnwrapElement(IN[1])[0]
+transform = link.GetTotalTransform()
+moved_pipes = []
+for s in pipe_solids:
+    new_solid = SolidUtils.CreateTransformed(s, transform)
+    moved_pipes.append(new_solid)
+
+OUT = moved_pipes
