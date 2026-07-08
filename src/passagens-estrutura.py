@@ -84,3 +84,23 @@ for s in pipe_solids:
     moved_pipes.append(new_solid)
 
 OUT = moved_pipes
+
+
+
+# Check for clashes between moved pipe solids and wall solids
+   
+wall_solids = IN[0][1]  
+moved_pipes = IN[1]
+
+clashes = []
+for pipe in moved_pipes:
+    for wall in wall_solids:
+        try:
+            result = BooleanOperationsUtils.ExecuteBooleanOperation(
+                pipe, wall, BooleanOperationsType.Intersect)
+            if result.Volume > 0:
+                clashes.append([pipe, wall])
+        except:
+            pass
+            
+OUT = clashes
