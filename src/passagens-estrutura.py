@@ -104,3 +104,20 @@ for pipe in moved_pipes:
             pass
             
 OUT = clashes
+
+
+
+# Get centroids of clashes
+   
+clashes = IN[0]
+
+centroids = []
+for clashe in clashes:
+    pipe = clashe[0]
+    wall = clashe[1]
+    intersection = BooleanOperationsUtils.ExecuteBooleanOperation(
+                   pipe, wall, BooleanOperationsType.Intersect)
+    point = intersection.ComputeCentroid()
+    centroids.append(point)
+
+OUT = centroids
