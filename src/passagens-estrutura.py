@@ -23,7 +23,7 @@ OUT = link_inst
 
 
 #--------------------------------------------------------------------------------------------------------------------------------------
-# Get all pipes from the linked document
+# Get all pipes from the linked document (the IN[0] is the link instance)
 dataEnteringNode = IN
 
 link_inst = UnwrapElement(IN[0])
@@ -50,7 +50,7 @@ OUT = host_walls
 
 
 #--------------------------------------------------------------------------------------------------------------------------------------
-# Get solids from elements
+# Get solids from elements (the IN[0] is the list of elements, the IN[1] is the list of elements to be processed)
 dataEnteringNode = IN
 
 def get_solids(elements):
@@ -76,7 +76,7 @@ OUT = (wall_data, pipe_data)
 
 
 #--------------------------------------------------------------------------------------------------------------------------------------
-# Move pipe solids to the hostdocument's coordinate system
+# Move pipe solids to the hostdocument's coordinate system (the IN[0] is the list of pipe solids, the IN[1] is the link instance)
 pipe_data = IN[0][1]        
 
 link = UnwrapElement(IN[1])[0]
@@ -90,7 +90,7 @@ OUT = moved_pipes
 
 
 #--------------------------------------------------------------------------------------------------------------------------------------
-# Check for clashes between moved pipe solids and wall solids
+# Check for clashes between moved pipe solids and wall solids (the IN[0] is the list of wall solids, the IN[1] is the list of moved pipe solids)
 wall_data = IN[0][1]  
 moved_pipes = IN[1]
 
@@ -109,7 +109,7 @@ OUT = clashes
 
 
 #--------------------------------------------------------------------------------------------------------------------------------------
-# Get centroids of clashes
+# Get centroids of clashes (the IN[0] is the list of clashes, each clash is a list with the pipe solid, the wall solid and the pipe diameter)
 clashes = IN[0]
 
 centroids = []
@@ -125,7 +125,7 @@ OUT = centroids
 
 
 #--------------------------------------------------------------------------------------------------------------------------------------
-# Create family instances at the clash centroids
+# Create family instances at the clash centroids (the IN[0] is the list of clash centroids, the IN[1] is the family symbol to be created)
 import clr
 clr.AddReference('ProtoGeometry')
 from Autodesk.DesignScript.Geometry import *
@@ -158,27 +158,42 @@ OUT = passagem
 
 
 #--------------------------------------------------------------------------------------------------------------------------------------
-# Get all generic models from the host document
-dataEnteringNode = IN
+# Get all generic models from the host document and check if a generic model with the same symbol already exists (the IN[0] is the symbol of the generic model to be created, unsing the Family Type node)
+symbol = UnwrapElement(IN[0])
 
-generic_model = (FilteredElementCollector(doc)
-.OfCategory(BuiltInCategory.OST_GenericModel)
-.WhereElementIsNotElementType().ToElements())
+collector = (FilteredElementCollector(doc)
+             .OfCategory(BuiltInCategory.OST_GenericModel)
+             .WhereElementIsNotElementType()
+             .ToElements())
 
-OUT = generic_model
-
-
-#--------------------------------------------------------------------------------------------------------------------------------------
-# Check if a generic model with the same symbol already exists
-generic_exist = UnwrapElement(IN[0])
-symbol = UnwrapElement(IN[1])
-
-pass_exist = []
-for g in generic_exist:
-    try:
-        if g.Symbol.Id == symbol.Id:
-            pass_exist.append(g)
-    except:
-        pass
+pass_exist = [g for g in collector
+              if g.IsValidObject and g.Symbol.Id == symbol.Id]
 
 OUT = pass_exist
+
+
+#----------------------------------------------------------------------------------------------------------------------------------------
+# Check if the candidate points are free from existing generic models (the IN[0] is the list of existing generic models, the IN[1] is the list of candidate points to be checked)
+existing_elems = UnwrapElement(IN[0])
+candidate_new  = IN[1]
+
+exist_pts = []
+for p in existing_elems:
+    exist_pts.append(p.Location.Point)
+
+tol = UnitUtils.ConvertToInternalUnits(30, UnitTypeId.Centimeters)
+
+kept_pts = list(exist_pts)
+mask = []
+for c in candidate_new:
+    is_free = True
+    for e in kept_pts:
+        if c.DistanceTo(e) < tol:
+            is_free = False
+            break
+    mask.append(is_free)
+    if is_free:
+        kept_pts.append(c)
+        
+OUT = mask
+# Conect the OUT with a List.FilterByBoolMask node, using the mask to filter the candidate points from the Get centroids of clashes node, so that only the points that are free from existing generic models will be kept for the creation of new family instances.
