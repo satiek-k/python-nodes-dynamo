@@ -116,10 +116,11 @@ centroids = []
 for clashe in clashes:
     pipe = clashe[0]
     wall = clashe[1]
+    d = clashe[2]
     intersection = BooleanOperationsUtils.ExecuteBooleanOperation(
                    pipe, wall, BooleanOperationsType.Intersect)
     point = intersection.ComputeCentroid()
-    centroids.append(point)
+    centroids.append([point, d])
 
 OUT = centroids
 
@@ -147,10 +148,18 @@ if not symbol.IsActive:
     symbol.Activate()
     doc.Regenerate()
 
+clearance = UnitUtils.ConvertToInternalUnits(5.0, UnitTypeId.Centimeters)
+
 passagem = []
-for in_point in insert_points:  
-    fi = doc.Create.NewFamilyInstance(in_point, symbol, StructuralType.NonStructural)
-    passagem.append(fi) 
+for in_point in insert_points:
+    point = in_point [0]
+    d = in_point [1] 
+    
+    fi = doc.Create.NewFamilyInstance(point, symbol, StructuralType.NonStructural)
+    passagem.append(fi)
+    
+    fi.LookupParameter("Largura").Set(d + clearance)
+    fi.LookupParameter("Altura").Set(d + clearance)
 
 TransactionManager.Instance.TransactionTaskDone()
 
@@ -185,7 +194,8 @@ tol = UnitUtils.ConvertToInternalUnits(30, UnitTypeId.Centimeters)
 
 kept_pts = list(exist_pts)
 mask = []
-for c in candidate_new:
+for candidate in candidate_new:
+    c = candidate [0]
     is_free = True
     for e in kept_pts:
         if c.DistanceTo(e) < tol:
